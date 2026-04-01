@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rag-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+
+  rag-api:
+    build:
+      context: ./services/rag-api
+    container_name: rag-api
+    environment:
+      # PostgreSQL
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+
+      # Embeddings
+      EMBEDDINGS_MODEL_NAME: sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+      EMBEDDING_DIM: 768
+
+      # LLM service
+      LLM_SERVICE_URL: http://llm-service:8000/api/llm/answer
+
+      # PDF extraction
+      TYPOGRAPH_REMOTE_ENABLED: "false"
+    depends_on:
+      - postgres
+      - llm-service
+    ports:
+      - "8000:8000"
+
+  llm-service:
+    build:
+      context: ./services/llm-service
+    container_name: llm-service
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      LLM_MODEL_NAME: nousresearch/deephermes-3-mistral-24b-preview:free
+    ports:
+      - "8002:8000"
+
+  telegram-bot:
+    build:
+      context: ./services/telegram-bot
+    container_name: telegram-bot
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      RAG_API_BASE_URL: http://rag-api:8000
+      TELEGRAM_PROXY: ${TELEGRAM_PROXY}
+    depends_on:
+      - rag-api
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1400"

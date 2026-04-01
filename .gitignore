@@ -1,0 +1,27 @@
+# Secrets / env
+.env
+.env.*
+*.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenv
+.venv/
+venv/
+
+# Logs
+*.log
+
+# Project data folders
+stored_documents/
+docs_add/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
